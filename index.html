@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Abel William | Profile Card</title>
+
+  <!-- Tailwind CSS, React 18 and Babel are loaded from CDNs: no npm, no build step -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+
+  <style>
+    body { margin: 0; font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+    /* Theme colors live in CSS variables. The dark toggle swaps them. */
+    .theme {
+      --bg-1: #c7d2fe; --bg-2: #fbcfe8; --bg-3: #a5f3fc;
+      --glass: rgba(255, 255, 255, 0.45);
+      --glass-border: rgba(255, 255, 255, 0.7);
+      --text: #1e1b4b; --muted: #4c4f7a;
+      --chip: rgba(255, 255, 255, 0.6);
+      --accent: #4f46e5;
+      --shadow: 0 20px 50px rgba(79, 70, 229, 0.25);
+    }
+    .theme.dark {
+      --bg-1: #0f172a; --bg-2: #1e1b4b; --bg-3: #172554;
+      --glass: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --text: #f1f5f9; --muted: #a5b4fc;
+      --chip: rgba(255, 255, 255, 0.12);
+      --accent: #818cf8;
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .page {
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--bg-1), var(--bg-2), var(--bg-3));
+      position: relative;
+      overflow: hidden;
+      transition: background 0.4s;
+    }
+    /* Soft blurred blobs behind the glass make the blur visible */
+    .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.55; }
+    .blob-a { width: 320px; height: 320px; background: #6366f1; top: -80px; left: -60px; }
+    .blob-b { width: 280px; height: 280px; background: #ec4899; bottom: -60px; right: -40px; }
+
+    .glass-card {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+      padding: 32px 28px;
+      color: var(--text);
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .icon-btn {
+      position: absolute; top: 16px; right: 16px;
+      width: 40px; height: 40px;
+      border: 1px solid var(--glass-border);
+      border-radius: 50%;
+      background: var(--chip);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    .avatar {
+      width: 104px; height: 104px;
+      border-radius: 50%;
+      border: 3px solid var(--glass-border);
+      object-fit: cover;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, #6366f1, #ec4899);
+      color: #fff; font-size: 2.2rem; font-weight: 700;
+    }
+
+    .chip {
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: var(--chip);
+      border: 1px solid var(--glass-border);
+      font-size: 0.82rem;
+    }
+
+    .link {
+      flex: 1; text-align: center;
+      padding: 8px 6px;
+      border-radius: 12px;
+      background: var(--chip);
+      border: 1px solid var(--glass-border);
+      color: var(--text);
+      font-size: 0.85rem; font-weight: 600;
+      text-decoration: none;
+    }
+    .link:hover { border-color: var(--accent); }
+
+    .like-btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit; font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .like-btn:active { transform: scale(0.97); }
+    .like-btn.on { background: #e11d48; }
+
+    button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ---------------------------------------------------------------
+    // COMPONENT: a small, reusable block of UI.
+    // PROPS = data passed IN from outside (name, role, bio, ...).
+    // STATE = data that CHANGES while the page is open (memory).
+    // ---------------------------------------------------------------
+    function ProfileCard({ name, role, bio, skills, avatar, links }) {
+      // STATE 1: is dark mode on? Starts as false (light).
+      const [isDark, setIsDark] = useState(false);
+
+      // STATE 2 and 3 (my own feature): the Like button and its count.
+      const [liked, setLiked] = useState(false);
+      const [likes, setLikes] = useState(0);
+
+      // STATE 4: if the photo link is broken, show initials instead.
+      const [imgFailed, setImgFailed] = useState(false);
+
+      // Build initials like "AW" from the name prop.
+      const initials = name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+
+      // Clicking Like flips liked and adds or removes 1 from the count.
+      function handleLike() {
+        setLiked(!liked);
+        setLikes(liked ? likes - 1 : likes + 1);
+      }
+
+      return (
+        <div className={isDark ? "theme dark" : "theme"}>
+          <div className="page flex items-center justify-center p-5">
+            <div className="blob blob-a"></div>
+            <div className="blob blob-b"></div>
+
+            <article className="glass-card flex flex-col items-center text-center">
+              {/* Clicking this changes the isDark state, so the theme changes */}
+              <button
+                className="icon-btn"
+                onClick={() => setIsDark(!isDark)}
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDark ? "☀️" : "🌙"}
+              </button>
+
+              {avatar && !imgFailed ? (
+                <img
+                  className="avatar"
+                  src={avatar}
+                  alt={"Photo of " + name}
+                  onError={() => setImgFailed(true)}
+                />
+              ) : (
+                <div className="avatar" aria-hidden="true">{initials}</div>
+              )}
+
+              <h1 className="mt-4 text-2xl font-bold">{name}</h1>
+              <p className="mt-1 text-sm font-medium" style={{ color: "var(--accent)" }}>{role}</p>
+              <p className="mt-4 text-sm leading-relaxed" style={{ color: "var(--muted)" }}>{bio}</p>
+
+              {/* One chip is drawn for every item in the skills prop */}
+              <ul className="mt-5 flex flex-wrap justify-center gap-2 p-0 list-none">
+                {skills.map((skill) => (
+                  <li key={skill} className="chip">{skill}</li>
+                ))}
+              </ul>
+
+              <div className="mt-6 flex w-full gap-2">
+                {links.map((l) => (
+                  <a key={l.label} className="link" href={l.url} target="_blank" rel="noreferrer">
+                    {l.label}
+                  </a>
+                ))}
+              </div>
+
+              <div className="mt-4 w-full">
+                <button className={liked ? "like-btn on" : "like-btn"} onClick={handleLike} aria-pressed={liked}>
+                  {liked ? "♥" : "♡"} Like · {likes}
+                </button>
+              </div>
+            </article>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------------------------------------------------------
+    // CUSTOMIZE HERE: change these values to your own details.
+    // Photo: upload to imgur.com, copy the DIRECT image link
+    // (ending in .jpg or .png) and paste it into avatar="".
+    // Leave avatar="" to show your initials instead.
+    // ---------------------------------------------------------------
+    function App() {
+      return (
+        <ProfileCard
+          name="Abel William"
+          role="Data Analytics Intern at ApnoAI"
+          bio="I'm a student learning React and modern web design. I like building small projects that solve real problems."
+          skills={["React", "JavaScript", "CSS"]}
+          avatar="avatar.jpg"
+          links={[
+            { label: "GitHub", url: "https://github.com/abelwilliamofficial-arch" },
+            { label: "LinkedIn", url: "https://www.linkedin.com/in/abel-william-prasana-fredrick-b04a9540a/" },
+            { label: "Twitter", url: "https://x.com/abelwilliam007" },
+          ]}
+        />
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
